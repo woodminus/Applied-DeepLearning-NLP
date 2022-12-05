@@ -140,4 +140,32 @@ def get_sentence_batch(batch_size, data_x,
 _inputs = tf.placeholder(tf.int32, shape=[batch_size, max_len], name='Input')
 _labels = tf.placeholder(tf.float32, shape=[batch_size, num_classes], name='Labels')
 # seqlens for dynamic calculation
-_seqlens = tf.placeholder(t
+_seqlens = tf.placeholder(tf.int32, shape=[batch_size], name='Seqlens')
+_inputs_tags = tf.placeholder(tf.int32, shape=[batch_size, max_len], name='Input_tags')
+
+with tf.name_scope("embeddings"):
+    embeddings = tf.Variable(
+        tf.random_uniform([vocabulary_size,
+                           embedding_dimension],
+                          -1.0, 1.0), name='embedding')
+    embed = tf.nn.embedding_lookup(embeddings, _inputs)
+
+with tf.variable_scope("lstm"):
+    # Define a function that gives the output in the right shape
+    def lstm_cell():
+        return tf.contrib.rnn.BasicLSTMCell(hidden_layer_size, forget_bias=1.0)
+    cell = tf.contrib.rnn.MultiRNNCell(cells=[lstm_cell() for _ in range(num_LSTM_layers)],
+                                       state_is_tuple=True)
+    outputs, states = tf.nn.dynamic_rnn(cell, embed,
+                                        sequence_length=_seqlens,
+                                        dtype=tf.float32)
+
+#### tags ####
+with tf.name_scope("embeddings_tags"):
+    embeddings_tags = tf.Variable(
+        tf.random_uniform([vocabulary_size_tags,
+                           embedding_dimension_tags],
+                          -1.0, 1.0), name='embedding_tags')
+    embed_tags = tf.nn.embedding_lookup(embeddings_tags, _inputs_tags)
+
+with tf.variable_scope
