@@ -54,4 +54,55 @@ for sentence_id in range(data_len):
 
     if len(data[sentence_id]) < max_len:
         pads = ['PAD']*(max_len-len(data[sentence_id]))
-   
+        data[sentence_id] = data[sentence_id] + pads
+
+### tags ###
+for sentence_id in range(data_len):
+    if len(data_tags[sentence_id]) < max_len:
+        pads = ['PAD']*(max_len-len(data_tags[sentence_id]))
+        data_tags[sentence_id] = data_tags[sentence_id] + pads
+
+####
+
+labels = [2] * alice_len + [1] * melville_len + [0] * austin_len
+# labels = [2] * 100 + [1] * 100 + [0] * 100
+# labels_hot = tf.one_hot(labels, depth=num_classes)
+
+for i in range(len(labels)):
+    label = labels[i]
+    one_hot_encoding = [0]*num_classes
+    one_hot_encoding[label] = 1
+    labels[i] = one_hot_encoding
+
+word2index_map = {}
+index = 0
+for sent in data:
+    for word in sent:
+        if word not in word2index_map:
+            word2index_map[word] = index
+            index += 1
+
+index2word_map = {index: word for word, index in word2index_map.items()}
+
+vocabulary_size = len(index2word_map)
+
+#### tags ####
+
+word2index_map_tags = {}
+index = 0
+for sent in data_tags:
+    for tag in sent:
+        if tag not in word2index_map_tags:
+            word2index_map_tags[tag] = index
+            index += 1
+
+index2word_map_tags = {index: tag for tag, index in word2index_map_tags.items()}
+
+vocabulary_size_tags = len(index2word_map_tags)
+
+###
+
+train_size = int(data_len/2) # has to be integer for slicing array
+data_indices = list(range(len(data)))
+np.random.shuffle(data_indices)
+d
