@@ -105,4 +105,39 @@ vocabulary_size_tags = len(index2word_map_tags)
 train_size = int(data_len/2) # has to be integer for slicing array
 data_indices = list(range(len(data)))
 np.random.shuffle(data_indices)
-d
+data = np.array(data)[data_indices]
+labels = np.array(labels)[data_indices]
+seqlens = np.array(seqlens)[data_indices]
+train_x = data[:train_size] # added dimension of array
+train_y = labels[:train_size]
+train_seqlens = seqlens[:train_size]
+
+test_x = data[train_size:]
+test_y = labels[train_size:]
+test_seqlens = seqlens[train_size:]
+
+#### tags ###
+data_tags = np.array(data_tags)[data_indices]
+train_x_tags = data_tags[:train_size]
+test_x_tags = data_tags[train_size:]
+test_y = labels[train_size:]
+test_seqlens = seqlens[train_size:]
+
+def get_sentence_batch(batch_size, data_x,
+                       data_y, data_seqlens, data_x_tags):
+    instance_indices = list(range(len(data_x)))
+    np.random.shuffle(instance_indices)
+    batch = instance_indices[:batch_size]
+    x = [[word2index_map[word] for word in data_x[i]]
+         for i in batch]
+    x2 = [[word2index_map_tags[word] for word in data_x_tags[i]]
+         for i in batch]
+    y = [data_y[i] for i in batch]
+    seqlens = [data_seqlens[i] for i in batch]
+    return x, y, seqlens, x2
+
+
+_inputs = tf.placeholder(tf.int32, shape=[batch_size, max_len], name='Input')
+_labels = tf.placeholder(tf.float32, shape=[batch_size, num_classes], name='Labels')
+# seqlens for dynamic calculation
+_seqlens = tf.placeholder(t
