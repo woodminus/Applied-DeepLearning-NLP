@@ -168,4 +168,30 @@ with tf.name_scope("embeddings_tags"):
                           -1.0, 1.0), name='embedding_tags')
     embed_tags = tf.nn.embedding_lookup(embeddings_tags, _inputs_tags)
 
-with tf.variable_scope
+with tf.variable_scope("lstm_tags"):
+    # Define a function that gives the output in the right shape
+    def lstm_cell():
+        return tf.contrib.rnn.BasicLSTMCell(hidden_layer_size_tags, forget_bias=1.0)
+    cell_tags = tf.contrib.rnn.MultiRNNCell(cells=[lstm_cell() for _ in range(num_LSTM_layers_tags)],
+                                       state_is_tuple=True)
+    outputs_tags, states_tags = tf.nn.dynamic_rnn(cell_tags, embed_tags,
+                                        sequence_length=_seqlens,
+                                        dtype=tf.float32)
+#######
+
+weights = {
+     'linear_layer': tf.Variable(tf.truncated_normal([hidden_layer_size + hidden_layer_size_tags, num_classes],
+                                                     mean=0, stddev=.01))
+ }
+biases = {
+    'linear_layer': tf.Variable(tf.truncated_normal([num_classes], mean=0, stddev=.01))
+}
+ # extract the last relevant output and use in a linear layer
+lstm_states = tf.concat([states[num_LSTM_layers-1][1], states_tags[num_LSTM_layers_tags-1][1]], 1)
+final_output = tf.matmul(lstm_states, weights["linear_layer"]) + biases["linear_layer"]
+
+softmax = tf.nn.softmax_cross_entropy_with_logits(logits=final_output,
+                                                  labels=_labels)
+cross_entropy = tf.reduce_mean(softmax)
+
+train_step = tf.train.RMSPropOptimizer(0.001, 0.9).minimize
