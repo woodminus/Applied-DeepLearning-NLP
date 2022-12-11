@@ -218,4 +218,28 @@ with tf.Session() as sess:
             print("Accuracy at %d: %.5f" % (step, acc))
             samp = sess.run(sample, feed_dict={_inputs: x_batch,
                                                 _labels: y_batch,
-                                                _s
+                                                _seqlens: seqlen_batch, _inputs_tags: x2_batch})
+            samp_ind = [row[0] for row in samp]
+            x_batch_miss = [x_batch[ind] for ind in samp_ind]
+            seqlen_miss = [seqlen_batch[ind] for ind in samp_ind]
+            sentences_miss = [[index2word_map[ind] for ind in sent] for sent in x_batch_miss]
+            if len(sentences_miss)>0:
+                print("Up to 5 miss-classified sample sentences:")
+                if len(sentences_miss)<5:
+                    n = len(sentences_miss)
+                else:
+                    n = 5
+                for i in range(n):
+                    print(" ".join(sentences_miss[i][:seqlen_miss[i]]))
+            else:
+                print("No miss-classified sentence!")
+
+    mean_acc = 0
+    for test_batch in range(5):
+        x_test, y_test, seqlen_test, x2_test = get_sentence_batch(batch_size,
+                                                         test_x, test_y,
+                                                         test_seqlens, test_x_tags)
+        batch_pred, batch_acc = sess.run([tf.argmax(final_output, 1), accuracy],
+                                         feed_dict={_inputs: x_test,
+                                                    _labels: y_test,
+                                
