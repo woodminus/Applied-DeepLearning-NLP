@@ -194,4 +194,28 @@ softmax = tf.nn.softmax_cross_entropy_with_logits(logits=final_output,
                                                   labels=_labels)
 cross_entropy = tf.reduce_mean(softmax)
 
-train_step = tf.train.RMSPropOptimizer(0.001, 0.9).minimize
+train_step = tf.train.RMSPropOptimizer(0.001, 0.9).minimize(cross_entropy)
+correct_prediction = tf.equal(tf.argmax(_labels, 1),
+                              tf.argmax(final_output, 1))
+accuracy = (tf.reduce_mean(tf.cast(correct_prediction,
+                                   tf.float32)))*100
+sample = tf.where(tf.math.logical_not(correct_prediction))
+
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+
+    for step in range(epochs):
+        x_batch, y_batch, seqlen_batch, x2_batch = get_sentence_batch(batch_size,
+                                                            train_x, train_y,
+                                                            train_seqlens, train_x_tags)
+        sess.run(train_step, feed_dict={_inputs: x_batch, _labels: y_batch,
+                                        _seqlens: seqlen_batch, _inputs_tags: x2_batch})
+
+        if step % 100 == 0:
+            acc = sess.run(accuracy, feed_dict={_inputs: x_batch,
+                                                _labels: y_batch,
+                                                _seqlens: seqlen_batch, _inputs_tags: x2_batch})
+            print("Accuracy at %d: %.5f" % (step, acc))
+            samp = sess.run(sample, feed_dict={_inputs: x_batch,
+                                                _labels: y_batch,
+                                                _s
