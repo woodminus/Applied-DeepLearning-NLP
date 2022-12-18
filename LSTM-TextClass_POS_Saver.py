@@ -93,4 +93,39 @@ index = 0
 for sent in data:
     for word in sent:
         if word not in word2index_map:
-            word2i
+            word2index_map[word] = index
+            index += 1
+
+index2word_map = {index: word for word, index in word2index_map.items()}
+
+vocabulary_size = len(index2word_map)
+
+#### tags ####
+
+word2index_map_tags = {}
+index = 0
+for sent in data_tags:
+    for tag in sent:
+        if tag not in word2index_map_tags:
+            word2index_map_tags[tag] = index
+            index += 1
+
+index2word_map_tags = {index: tag for tag, index in word2index_map_tags.items()}
+
+vocabulary_size_tags = len(index2word_map_tags)
+
+train_x, test_x, train_y, test_y, train_seqlens, test_seqlens, train_x_tags, test_x_tags, = \
+    train_test_split(data, labels, seqlens, data_tags, test_size=test_ratio, random_state=42)
+
+
+#tensorflow
+_inputs = tf.placeholder(tf.int32, shape=[batch_size, max_len], name='Input')
+_labels = tf.placeholder(tf.float32, shape=[batch_size, num_classes], name='Labels')
+_seqlens = tf.placeholder(tf.int32, shape=[batch_size], name='Seqlens')
+_inputs_tags = tf.placeholder(tf.int32, shape=[batch_size, max_len], name='Input_tags')
+_miss = tf.placeholder(tf.string, shape=[None], name="MissClass")
+
+global_step = tf.Variable(0, trainable=False, name='global_step')
+increment_global_step = tf.assign_add(global_step, 1, name = 'increment_global_step')
+
+with tf.name_scope("embeddings
