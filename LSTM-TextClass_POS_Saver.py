@@ -128,4 +128,32 @@ _miss = tf.placeholder(tf.string, shape=[None], name="MissClass")
 global_step = tf.Variable(0, trainable=False, name='global_step')
 increment_global_step = tf.assign_add(global_step, 1, name = 'increment_global_step')
 
-with tf.name_scope("embeddings
+with tf.name_scope("embeddings"):
+    embeddings = tf.Variable(
+        tf.random_uniform([vocabulary_size,
+                           embedding_dimension],
+                          -1.0, 1.0), name='embedding')
+    embed = tf.nn.embedding_lookup(embeddings, _inputs)
+
+with tf.variable_scope("lstm"):
+    # Define a function that gives the output in the right shape
+    def lstm_cell():
+        return tf.nn.rnn_cell.LSTMCell(hidden_layer_size, forget_bias=1.0)
+    cell = tf.contrib.rnn.MultiRNNCell(cells=[lstm_cell() for _ in range(num_LSTM_layers)],
+                                       state_is_tuple=True)
+    outputs, states = tf.nn.dynamic_rnn(cell, embed,
+                                        sequence_length=_seqlens,
+                                        dtype=tf.float32)
+#### tags ####
+with tf.name_scope("embeddings_tags"):
+    embeddings_tags = tf.Variable(
+        tf.random_uniform([vocabulary_size_tags,
+                           embedding_dimension_tags],
+                          -1.0, 1.0), name='embedding_tags')
+    embed_tags = tf.nn.embedding_lookup(embeddings_tags, _inputs_tags)
+
+with tf.variable_scope("lstm_tags"):
+    # Define a function that gives the output in the right shape
+    def lstm_cell():
+        return tf.nn.rnn_cell.LSTMCell(hidden_layer_size_tags, forget_bias=1.0)
+    cell_t
