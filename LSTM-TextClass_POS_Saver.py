@@ -51,4 +51,46 @@ epochs = 201
 test_ratio = 0.2
 
 alice_sentences, alice_words, alice_tags, alice_len = data_builder('carroll-alice.txt')
-mel
+melville_sentences, melville_words, melville_tags, melville_len = data_builder('melville-moby_dick.txt')
+austin_sentences, austin_words, austin_tags, austin_len = data_builder('austen-sense.txt')
+
+data = np.array(alice_words + melville_words + austin_words)
+data_tags = np.array(alice_tags + melville_tags + austin_tags)
+data_len = len(data)
+
+max_len = 0
+for sent in data:
+    if len(sent)>max_len:
+        max_len = len(sent)
+
+seqlens = []
+
+for sentence_id in range(data_len):
+    seqlens.append(len(data[sentence_id]))
+
+    if len(data[sentence_id]) < max_len:
+        pads = ['PAD']*(max_len-len(data[sentence_id]))
+        data[sentence_id] = data[sentence_id] + pads
+
+### tags ###
+for sentence_id in range(data_len):
+    if len(data_tags[sentence_id]) < max_len:
+        pads = ['PAD']*(max_len-len(data_tags[sentence_id]))
+        data_tags[sentence_id] = data_tags[sentence_id] + pads
+
+####
+
+labels = [2] * alice_len + [1] * melville_len + [0] * austin_len
+
+for i in range(len(labels)):
+    label = labels[i]
+    one_hot_encoding = [0]*num_classes
+    one_hot_encoding[label] = 1
+    labels[i] = one_hot_encoding
+
+word2index_map = {}
+index = 0
+for sent in data:
+    for word in sent:
+        if word not in word2index_map:
+            word2i
