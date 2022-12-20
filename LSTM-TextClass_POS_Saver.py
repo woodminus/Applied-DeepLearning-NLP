@@ -185,4 +185,31 @@ with tf.name_scope("cost"):
 train_step = tf.train.RMSPropOptimizer(0.001, 0.9).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(_labels, 1),
                               tf.argmax(final_output, 1))
-with tf.
+with tf.name_scope("ACC"):
+    accuracy = (tf.reduce_mean(tf.cast(correct_prediction, tf.float32)))*100
+    acc_summary = tf.summary.scalar("Accuracy", accuracy)
+
+with tf.name_scope("Confusion_Matrix"):
+    confusion = tf.confusion_matrix(labels=tf.argmax(_labels, 1),
+                                    predictions=tf.argmax(final_output, 1),
+                                    num_classes=num_classes)
+    conf_summary = tf.summary.text("Confusion Matrix", tf.as_string(confusion))
+
+
+with tf.name_scope("Missclassified"):
+    sample = tf.where(tf.math.logical_not(correct_prediction))
+    miss_summary = tf.summary.text("Miss Classification", _miss)
+
+saver = tf.train.Saver(max_to_keep=4, keep_checkpoint_every_n_hours=0.5)
+
+
+with tf.Session() as sess:
+    train_writer = tf.summary.FileWriter(os.path.join(SAVE_PATH + "/train"),
+                                         graph=tf.get_default_graph())
+    test_writer = tf.summary.FileWriter(os.path.join(SAVE_PATH + "/test"),
+                                         graph=tf.get_default_graph())
+    with open(os.path.join(SAVE_PATH, 'metadata.tsv'), "w") as metadata:
+        metadata.write('Name\tClass\n')
+        for k, v in index2word_map.items():
+            metadata.write('%s\t%d\n' % (v, k))
+    if glob.glob(SAVE_PATH + '*.me
