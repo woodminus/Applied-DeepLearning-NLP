@@ -212,4 +212,29 @@ with tf.Session() as sess:
         metadata.write('Name\tClass\n')
         for k, v in index2word_map.items():
             metadata.write('%s\t%d\n' % (v, k))
-    if glob.glob(SAVE_PATH + '*.me
+    if glob.glob(SAVE_PATH + '*.meta'):
+        imported_meta = tf.train.import_meta_graph(glob.glob(SAVE_PATH + '*.meta')[0])
+        #sess = tf.Session()
+        imported_meta.restore(sess, tf.train.latest_checkpoint(SAVE_PATH))
+        global_step = sess.run(global_step)
+        print(" restoring an old model and training it further ")
+    else:
+        sess.run(tf.global_variables_initializer())
+        print("Building model from scratch!")
+        # global_step = 0
+
+
+    config = projector.ProjectorConfig()
+    embedding = config.embeddings.add()
+    embedding.tensor_name = embeddings.name
+    # Link this tensor to its metadata file (e.g. labels)
+    embedding.metadata_path = os.path.join("/home/simon/HegelMaschine/HegelPython/ADL/ADL-NLP/logs/TextClass/", 'metadata.tsv')
+    projector.visualize_embeddings(train_writer, config)
+    merged = tf.summary.merge([acc_summary, CE_summary])
+    merged_t = tf.summary.merge([acc_summary, CE_summary])
+    test_merged = tf.summary.merge([conf_summary])
+
+    for step in range(epochs):
+        x_batch, y_batch, seqlen_batch, x2_batch = get_sentence_batch(batch_size,
+                                                            train_x, train_y,
+                                                            train_seqlens, train
