@@ -237,4 +237,24 @@ with tf.Session() as sess:
     for step in range(epochs):
         x_batch, y_batch, seqlen_batch, x2_batch = get_sentence_batch(batch_size,
                                                             train_x, train_y,
-                                                            train_seqlens, train
+                                                            train_seqlens, train_x_tags)
+        summary, global_step, _ = sess.run([merged, increment_global_step, train_step], feed_dict={_inputs: x_batch, _labels: y_batch,
+                                                                                                    _seqlens: seqlen_batch, _inputs_tags: x2_batch})
+
+        train_writer.add_summary(summary, global_step)
+
+        if step % 100 == 0:
+            saver.save(sess, os.path.join(SAVE_PATH, "model"))
+            print("Trained: %s" % step)
+            x_test, y_test, seqlen_test, x2_test = get_sentence_batch(batch_size,
+                                                                          test_x, test_y,
+                                                                          test_seqlens, test_x_tags)
+            test_pred, summary_t = sess.run([tf.argmax(final_output, 1), merged_t], feed_dict={_inputs: x_test, _labels: y_test, _seqlens: seqlen_test, _inputs_tags: x2_test})
+            test_writer.add_summary(summary_t, global_step)
+
+    mean_acc = 0
+    for test_batch in range(5):
+        x_test, y_test, seqlen_test, x2_test = get_sentence_batch(batch_size,
+                                                         test_x, test_y,
+                                                         test_seqlens, test_x_tags)
+        test_summary, batch_pred, batch
