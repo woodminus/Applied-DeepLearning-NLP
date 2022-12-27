@@ -257,4 +257,27 @@ with tf.Session() as sess:
         x_test, y_test, seqlen_test, x2_test = get_sentence_batch(batch_size,
                                                          test_x, test_y,
                                                          test_seqlens, test_x_tags)
-        test_summary, batch_pred, batch
+        test_summary, batch_pred, batch_acc = sess.run([test_merged, tf.argmax(final_output, 1), accuracy],
+                                         feed_dict={_inputs: x_test,
+                                                    _labels: y_test,
+                                                    _seqlens: seqlen_test, _inputs_tags: x2_test})
+        mean_acc = mean_acc + batch_acc
+
+        samp = sess.run(sample, feed_dict={_inputs: x_test,
+                                           _labels: y_test,
+                                           _seqlens: seqlen_test, _inputs_tags: x2_test})
+        samp_ind = [row[0] for row in samp]
+        x_batch_miss = [x_test[ind] for ind in samp_ind]
+        seqlen_miss = [seqlen_test[ind] for ind in samp_ind]
+        sentences_miss = [[index2word_map[ind] for ind in sent] for sent in x_batch_miss]
+        miss_class = []
+        if len(samp) > 0:
+            # print("Remaining miss-classified sentences:")
+            for i in range(len(sentences_miss)):
+                sent =" ".join(sentences_miss[i][:seqlen_miss[i]])
+                miss_class.append(sent)
+                #print(sent)
+        else:
+            print("No miss-classified sentence!")
+        conf = sess.run(confusion, feed_dict={_inputs: x_batch,
+                             
