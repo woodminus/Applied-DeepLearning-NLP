@@ -280,4 +280,16 @@ with tf.Session() as sess:
         else:
             print("No miss-classified sentence!")
         conf = sess.run(confusion, feed_dict={_inputs: x_batch,
-                             
+                                              _labels: y_batch, _seqlens: seqlen_batch, _inputs_tags: x2_batch})
+        miss = sess.run(miss_summary, feed_dict={_miss: miss_class} )
+
+        # print(conf)
+
+        test_writer.add_summary(test_summary, global_step)
+        test_writer.add_summary(miss, global_step)
+    print("Mean test accuracy: %.5f" % (mean_acc/5))
+    _steps=step
+train_writer.close()
+test_writer.close()
+sess.close()
+
