@@ -59,4 +59,34 @@ window_size = 3
 vector_dim = 3
 epochs = 100
 
-valid_size = 16     # Random se
+valid_size = 16     # Random set of words to evaluate similarity on.
+valid_window = 100  # Only pick dev samples in the head of the distribution.
+valid_examples = np.random.choice(valid_window, valid_size, replace=False)
+
+sampling_table = tf.keras.preprocessing.sequence.make_sampling_table(vocab_size)
+couples, labels = tf.keras.preprocessing.sequence.skipgrams(data, vocab_size, window_size=window_size, sampling_table=sampling_table)
+word_target, word_context = zip(*couples)
+word_target = np.array(word_target, dtype="int32")
+word_context = np.array(word_context, dtype="int32")
+
+print(couples[:10], labels[:10])
+
+# create some input variables
+input_target = tf.keras.Input((1,))
+input_context = tf.keras.Input((1,))
+
+embedding = tf.keras.layers.Embedding(vocab_size, vector_dim, input_length=1, name='embedding')
+
+target = embedding(input_target)
+target = tf.keras.layers.Reshape((vector_dim, 1))(target)
+context = embedding(input_context)
+context = tf.keras.layers.Reshape((vector_dim, 1))(context)
+
+
+similarity = tf.keras.layers.Dot(normalize=True, axes=1)([target, context])
+
+# now perform the dot product operation to get a similarity measure
+dot_product = tf.keras.layers.Dot(axes=1)([target, context])
+dot_product = tf.keras.layers.Reshape((1,))(dot_product)
+# add the sigmoid output layer
+output = tf.kera
