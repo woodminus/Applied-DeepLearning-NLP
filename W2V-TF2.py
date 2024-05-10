@@ -89,4 +89,37 @@ similarity = tf.keras.layers.Dot(normalize=True, axes=1)([target, context])
 dot_product = tf.keras.layers.Dot(axes=1)([target, context])
 dot_product = tf.keras.layers.Reshape((1,))(dot_product)
 # add the sigmoid output layer
-output = tf.kera
+output = tf.keras.layers.Dense(1, activation='sigmoid')(dot_product)
+
+# create the primary training model
+model = tf.keras.Model(inputs=[input_target, input_context], outputs=output)
+print(model.summary())
+model.compile(loss='binary_crossentropy', optimizer='rmsprop')
+
+# create a secondary validation model to run our similarity checks during training
+validation_model = tf.keras.Model(inputs=[input_target, input_context], outputs=similarity)
+print(validation_model.summary())
+
+class SimilarityCallback:
+    def run_sim(self):
+        for i in range(valid_size):
+            valid_word = reverse_dictionary[valid_examples[i]]
+            top_k = 8  # number of nearest neighbors
+            sim = self._get_sim(valid_examples[i])
+            nearest = (-sim).argsort()[1:top_k + 1]
+            log_str = 'Nearest to %s:' % valid_word
+            for k in range(top_k):
+                close_word = reverse_dictionary[nearest[k]]
+                log_str = '%s %s,' % (log_str, close_word)
+            print(log_str)
+
+    @staticmethod
+    def _get_sim(valid_word_idx):
+        sim = np.zeros((vocab_size,))
+        in_arr1 = np.zeros((1,))
+        in_arr2 = np.zeros((1,))
+        for i in range(vocab_size):
+            in_arr1[0,] = valid_word_idx
+            in_arr2[0,] = i
+            out = validation_model.predict_on_batch([in_arr1, in_arr2])
+            sim[
