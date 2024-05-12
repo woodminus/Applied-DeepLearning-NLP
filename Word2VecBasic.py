@@ -48,4 +48,35 @@ for sent in sentences:
             skip_gram_pairs.append([word_context_pair[1],
                                   word_context_pair[0][0]])
             skip_gram_pairs.append([word_context_pair[1],
-       
+                                 word_context_pair[0][1]])
+
+batch_size = 64
+embedding_dimension = 3 # Three was chosen for visualization.
+negative_samples = 8
+LOG_DIR = "/home/simon/Firma/AI/HegelMachine/HegelPython/logs/word2vec_intro/" # Use absolute path.
+
+def get_skipgram_batch(batch_size):
+    instance_indices = list(range(len(skip_gram_pairs)))
+    np.random.shuffle(instance_indices)
+    batch = instance_indices[:batch_size]
+    x = [skip_gram_pairs[i][0] for i in batch]
+    y = [[skip_gram_pairs[i][1]] for i in batch]
+    return x, y
+
+# Input data, labels
+train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
+train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
+
+# Embedding lookup table currently only implemented in CPU
+with tf.name_scope("embeddings"):
+    embeddings = tf.Variable(
+        tf.random_uniform([vocabulary_size, embedding_dimension],
+                          -1.0, 1.0), name='embedding')
+    # This is essentialy a lookup table
+    embed = tf.nn.embedding_lookup(embeddings, train_inputs)
+
+# Create variables for the NCE loss
+nce_weights = tf.Variable(
+        tf.truncated_normal([vocabulary_size, embedding_dimension],
+                            stddev=1.0 / math.sqrt(embedding_dimension)))
+nce_biases = tf.Variable(tf.
