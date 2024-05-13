@@ -79,4 +79,35 @@ with tf.name_scope("embeddings"):
 nce_weights = tf.Variable(
         tf.truncated_normal([vocabulary_size, embedding_dimension],
                             stddev=1.0 / math.sqrt(embedding_dimension)))
-nce_biases = tf.Variable(tf.
+nce_biases = tf.Variable(tf.zeros([vocabulary_size]))
+
+
+loss = tf.reduce_mean(
+  tf.nn.nce_loss(weights=nce_weights, biases=nce_biases, inputs=embed, labels=train_labels,
+                 num_sampled=negative_samples, num_classes=vocabulary_size))
+tf.summary.scalar("NCE_loss", loss)
+
+# Learning rate decay
+global_step = tf.Variable(0, trainable=False)
+learningRate = tf.train.exponential_decay(learning_rate=0.1,
+                                          global_step=global_step,
+                                          decay_steps=1000,
+                                          decay_rate=0.95,
+                                          staircase=True)
+train_step = tf.train.GradientDescentOptimizer(learningRate).minimize(loss)
+merged = tf.summary.merge_all()
+
+with tf.Session() as sess:
+    train_writer = tf.summary.FileWriter(LOG_DIR,
+                                         graph=tf.get_default_graph())
+    saver = tf.train.Saver()
+
+    with open(os.path.join(LOG_DIR, 'metadata.tsv'), "w") as metadata:
+        metadata.write('Name\tClass\n')
+        for k, v in index2word_map.items():
+            metadata.write('%s\t%d\n' % (v, k))
+
+    config = projector.ProjectorConfig()
+    embedding = config.embeddings.add()
+    embedding.tensor_name = embeddings.name
+    # Link this tensor to its metadata file (
