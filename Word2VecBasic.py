@@ -110,4 +110,34 @@ with tf.Session() as sess:
     config = projector.ProjectorConfig()
     embedding = config.embeddings.add()
     embedding.tensor_name = embeddings.name
-    # Link this tensor to its metadata file (
+    # Link this tensor to its metadata file (e.g. labels).
+    embedding.metadata_path = os.path.join(LOG_DIR, 'metadata.tsv')
+    projector.visualize_embeddings(train_writer, config)
+
+    tf.global_variables_initializer().run()
+
+    for step in range(10000):
+        x_batch, y_batch = get_skipgram_batch(batch_size)
+        summary, _ = sess.run([merged, train_step],
+                              feed_dict={train_inputs: x_batch,
+                                         train_labels: y_batch})
+        train_writer.add_summary(summary, step)
+
+        if step % 100 == 0:
+            saver.save(sess, os.path.join(LOG_DIR, "w2v_model.ckpt"), step)
+            loss_value = sess.run(loss,
+                                  feed_dict={train_inputs: x_batch,
+                                             train_labels: y_batch})
+            print("Loss at %d: %.5f" % (step, loss_value))
+
+    # Normalize embeddings before using
+    norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
+    normalized_embeddings = embeddings / norm
+    normalized_embeddings_matrix = sess.run(normalized_embeddings)
+
+ref_word = normalized_embeddings_matrix[word2index_map["alice"]]
+
+cosine_dists = np.dot(normalized_embeddings_matrix, ref_word)
+ff = np.argsort(cosine_dists)[::-1][1:10]
+for f in ff:
+    print(index2word_map[f])
