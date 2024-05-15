@@ -141,3 +141,4 @@ cosine_dists = np.dot(normalized_embeddings_matrix, ref_word)
 ff = np.argsort(cosine_dists)[::-1][1:10]
 for f in ff:
     print(index2word_map[f])
+    print(cosine_dists[f])
