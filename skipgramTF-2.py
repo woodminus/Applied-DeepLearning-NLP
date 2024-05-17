@@ -74,4 +74,31 @@ embedding = tf.keras.layers.Embedding(vocab_size, vector_dim, input_length=1, na
 target = embedding(input_target)
 target = tf.keras.layers.Reshape((vector_dim, 1))(target)
 context = embedding(input_context)
-context = tf.keras.layers.R
+context = tf.keras.layers.Reshape((vector_dim, 1))(context)
+
+# setup a cosine similarity operation which will be output in a secondary model
+similarity = tf.keras.layers.dot(inputs=[target, context], axes=1, normalize=True)
+
+# now perform the dot product operation to get a similarity measure
+dot_product = tf.keras.layers.dot(inputs=[target, context], axes=1)
+dot_product = tf.keras.layers.Reshape((1,))(dot_product)
+# add the sigmoid output layer
+output = tf.keras.layers.Dense(1, activation='sigmoid')(dot_product)
+
+# create the primary training model
+model = tf.keras.Model(inputs=[input_target, input_context], outputs=output)
+print(model.summary())
+model.compile(loss='binary_crossentropy', optimizer='rmsprop')
+
+# create a secondary validation model to run our similarity checks during training
+validation_model = tf.keras.Model(inputs=[input_target, input_context], outputs=similarity)
+
+class SimilarityCallback:
+    def run_sim(self):
+        for i in range(valid_size):
+            valid_word = reverse_dictionary[valid_examples[i]]
+            top_k = 4  # number of nearest neighbors
+            sim = self._get_sim(valid_examples[i])
+            nearest = (-sim).argsort()[1:top_k + 1]
+            log_str = 'Nearest to %s:' % valid_word
+            for k in range(top_
