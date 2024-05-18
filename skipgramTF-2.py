@@ -101,4 +101,41 @@ class SimilarityCallback:
             sim = self._get_sim(valid_examples[i])
             nearest = (-sim).argsort()[1:top_k + 1]
             log_str = 'Nearest to %s:' % valid_word
-            for k in range(top_
+            for k in range(top_k):
+                close_word = reverse_dictionary[nearest[k]]
+                log_str = '%s %s,' % (log_str, close_word)
+            print(log_str)
+
+    @staticmethod
+    def _get_sim(valid_word_idx):
+        sim = np.zeros((vocab_size,))
+        in_arr1 = np.zeros((1,))
+        in_arr2 = np.zeros((1,))
+        for i in range(vocab_size):
+            in_arr1[0,] = valid_word_idx
+            in_arr2[0,] = i
+            out = validation_model.predict_on_batch([in_arr1, in_arr2])
+            sim[i] = out
+        return sim
+sim_cb = SimilarityCallback()
+
+arr_1 = np.zeros((1,))
+arr_2 = np.zeros((1,))
+arr_3 = np.zeros((1,))
+for cnt in range(epochs):
+    idx = np.random.randint(0, len(labels)-1)
+    arr_1[0,] = word_target[idx]
+    arr_2[0,] = word_context[idx]
+    arr_3[0,] = labels[idx]
+    loss = model.train_on_batch([arr_1, arr_2], arr_3)
+    if cnt % 100 == 0:
+        print("Iteration {}, loss={}".format(cnt, loss))
+    if cnt % 10000 == 0:
+        sim_cb.run_sim() # For huge datasets this is very time consuming. 
+
+e = model.layers[2]
+weights = e.get_weights()[0]
+print(weights.shape) # shape: (vocab_size, embedding_dim)
+
+out_v = io.open('vecs.tsv', 'w', encoding='utf-8')
+out_m = io.open('meta.tsv', 'w', encoding='utf-8'
