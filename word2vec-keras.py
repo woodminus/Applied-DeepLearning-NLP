@@ -1,28 +1,43 @@
+
 # based in parts on https://adventuresinmachinelearning.com/word2vec-tutorial-tensorflow/
 # and https://adventuresinmachinelearning.com/word2vec-keras-tutorial/
-# rewritten for tensorflow 2.2 integrated subword tokenizer
+# rewritten for tensorflow 2.0.1beta
 
+import os
+import urllib
 import tensorflow as tf
-import sentencepiece as spm
+import zipfile
 import collections
 import numpy as np
+from tensorflow import keras
+from tensorflow.keras import layers
 import io
 
-# parameters
-filename = "/home/simon/Downloads/poems_processed.txt" # Any big txt...
-vocab_size=10000
-sub_size=15000
-window_size = 3
-vector_dim = 768
-epochs = 1000000
+def maybe_download(filename, url, expected_bytes):
+    """Download a file if not present, and make sure it's the right size."""
+    if not os.path.exists(filename):
+        filename, _ = urllib.request.urlretrieve(url + filename, filename)
+    statinfo = os.stat(filename)
+    if statinfo.st_size == expected_bytes:
+        print('Found and verified', filename)
+    else:
+        print(statinfo.st_size)
+        raise Exception(
+            'Failed to verify ' + filename + '. Can you get to it with a browser?')
+    return filename
 
-valid_size = 8     # Random set of words to evaluate similarity on.
-valid_window = 100  # Only pick dev samples in the head of the distribution.
-valid_examples = np.random.choice(valid_window, valid_size, replace=False)
+url = 'http://mattmahoney.net/dc/'
+filename = maybe_download('text8.zip', url, 31344016)
 
-with open(filename, "r", encoding = "utf8") as f: text = f.read()
+# Read the data into a list of strings.
+def read_data(filename):
+    """Extract the first file enclosed in a zip file as a list of words."""
+    with zipfile.ZipFile(filename) as f:
+        data = tf.compat.as_str(f.read(f.namelist()[0])).split()
+    return data
 
-# functions
+vocabulary = read_data(filename)
+print(vocabulary[:7])
 
 def build_dataset(words, n_words):
     """Process raw inputs into a dataset."""
@@ -44,18 +59,16 @@ def build_dataset(words, n_words):
     reversed_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
     return data, count, dictionary, reversed_dictionary
 
-
-spm.SentencePieceTrainer.Train('--input={} --model_prefix=m --vocab_size={}'.format(filename, sub_size))
-
-sp = spm.SentencePieceProcessor()
-sp.load('m.model')
-
-print(sp.encode_as_pieces('this is a test.'))
-
-vocabulary = sp.encode_as_pieces(text)
-
+vocab_size=100
 data, count, dictionary, reverse_dictionary = build_dataset(vocabulary, vocab_size)
 
+window_size = 3
+vector_dim = 3
+epochs = 100
+
+valid_size = 16     # Random set of words to evaluate similarity on.
+valid_window = 100  # Only pick dev samples in the head of the distribution.
+valid_examples = np.random.choice(valid_window, valid_size, replace=False)
 
 sampling_table = tf.keras.preprocessing.sequence.make_sampling_table(vocab_size)
 couples, labels = tf.keras.preprocessing.sequence.skipgrams(data, vocab_size, window_size=window_size, sampling_table=sampling_table)
@@ -66,38 +79,38 @@ word_context = np.array(word_context, dtype="int32")
 print(couples[:10], labels[:10])
 
 # create some input variables
-input_target = tf.keras.Input((1,))
-input_context = tf.keras.Input((1,))
+input_target = keras.Input((1,))
+input_context = keras.Input((1,))
 
-embedding = tf.keras.layers.Embedding(vocab_size, vector_dim, input_length=1, name='embedding')
+embedding = layers.Embedding(vocab_size, vector_dim, input_length=1, name='embedding')
 
 target = embedding(input_target)
-target = tf.keras.layers.Reshape((vector_dim, 1))(target)
+target = layers.Reshape((vector_dim, 1))(target)
 context = embedding(input_context)
-context = tf.keras.layers.Reshape((vector_dim, 1))(context)
+context = layers.Reshape((vector_dim, 1))(context)
 
 # setup a cosine similarity operation which will be output in a secondary model
-similarity = tf.keras.layers.dot(inputs=[target, context], axes=1, normalize=True)
+similarity = layers.dot(inputs=[target, context], axes=0, normalize=True)
 
 # now perform the dot product operation to get a similarity measure
-dot_product = tf.keras.layers.dot(inputs=[target, context], axes=1)
-dot_product = tf.keras.layers.Reshape((1,))(dot_product)
+dot_product = layers.dot(inputs=[target, context], axes=1)
+dot_product = layers.Reshape((1,))(dot_product)
 # add the sigmoid output layer
-output = tf.keras.layers.Dense(1, activation='sigmoid')(dot_product)
+output = layers.Dense(1, activation='sigmoid')(dot_product)
 
 # create the primary training model
-model = tf.keras.Model(inputs=[input_target, input_context], outputs=output)
+model = keras.Model(inputs=[input_target, input_context], outputs=output)
 print(model.summary())
 model.compile(loss='binary_crossentropy', optimizer='rmsprop')
 
 # create a secondary validation model to run our similarity checks during training
-validation_model = tf.keras.Model(inputs=[input_target, input_context], outputs=similarity)
+validation_model = keras.Model(inputs=[input_target, input_context], outputs=similarity)
 
 class SimilarityCallback:
     def run_sim(self):
         for i in range(valid_size):
             valid_word = reverse_dictionary[valid_examples[i]]
-            top_k = 4  # number of nearest neighbors
+            top_k = 8  # number of nearest neighbors
             sim = self._get_sim(valid_examples[i])
             nearest = (-sim).argsort()[1:top_k + 1]
             log_str = 'Nearest to %s:' % valid_word
@@ -131,7 +144,7 @@ for cnt in range(epochs):
     if cnt % 100 == 0:
         print("Iteration {}, loss={}".format(cnt, loss))
     if cnt % 10000 == 0:
-        sim_cb.run_sim() # For huge datasets this is very time consuming. 
+        sim_cb.run_sim()
 
 e = model.layers[2]
 weights = e.get_weights()[0]
@@ -148,5 +161,3 @@ out_v.close()
 out_m.close()
 
 # load vecs.tsv and meta.tsv in projector.tensorflow.org
-
-print("stop")

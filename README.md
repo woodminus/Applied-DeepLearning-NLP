@@ -1,0 +1,2 @@
+# Applied-DeepLearning-NLP
+This repository contains notebooks which were used for the coursework of 'Applied Deep Learning for Natural Language Processing' at TUM. These notebooks now maintained and managed by woodminus.
